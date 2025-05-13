@@ -1,6 +1,9 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 
 const initialMessages = [
   { sender: "Gemini AI", text: "Welcome to GeoScience Chat! I'm here to help with questions about weather, earth science, geomatics, and environmental data. How can I assist you today?" },
@@ -228,13 +231,14 @@ export default function Home() {
 
   return (
     <div className="h-screen flex">
+      {/* Sidebar */}
       <AnimatePresence>
         {isSidebarOpen && (
           <motion.aside
             initial={{ width: 0, opacity: 0 }}
             animate={{ width: 320, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
-            className="bg-[var(--background)] border-r border-blue-100 flex flex-col"
+            className="bg-[var(--background)] border-r border-blue-100 flex flex-col h-screen fixed sm:relative z-50"
           >
             <div className="p-4 border-b border-blue-100">
               <button
@@ -247,7 +251,7 @@ export default function Home() {
                 New Chat
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-2">
+            <div className="flex-1 overflow-y-auto p-2 pb-20 sm:pb-4">
               {conversations.map((conv, index) => (
                 <motion.div
                   key={conv.id}
@@ -312,11 +316,13 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      <main className="flex-1 flex flex-col bg-[var(--background)]">
-        <header className="h-14 border-b border-blue-100 flex items-center px-4 gap-4 bg-white/80 backdrop-blur-sm">
+      {/* Main Chat Area */}
+      <main className="flex-1 flex flex-col bg-[var(--background)] relative w-full">
+        {/* Header */}
+        <header className="h-14 border-b border-blue-100 flex items-center px-4 gap-4 bg-white/80 backdrop-blur-sm sticky top-0 z-40">
           <button
             onClick={() => setIsSidebarOpen(prev => !prev)}
-            className="p-2 hover:bg-blue-50 rounded-lg transition-colors"
+            className="p-2 hover:bg-blue-50 rounded-lg transition-colors lg:hidden"
           >
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M4 5H16M4 10H16M4 15H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -324,7 +330,7 @@ export default function Home() {
           </button>
           <div className="flex items-center gap-2">
             <EarthIcon />
-            <h1 className="font-semibold text-[var(--foreground)]">GeoScience Chat</h1>
+            <h1 className="font-semibold text-[var(--foreground)] hidden sm:block">GeoScience Chat</h1>
           </div>
           <button
             onClick={clearChat}
@@ -334,8 +340,9 @@ export default function Home() {
           </button>
         </header>
 
+        {/* Messages */}
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-3xl mx-auto py-4 px-6">
+          <div className="max-w-4xl mx-auto py-4 px-4 sm:px-6 space-y-6">
             <AnimatePresence initial={false}>
               {activeMessages.map((msg, idx) => {
                 const isAI = msg.sender === "Gemini AI";
@@ -346,17 +353,45 @@ export default function Home() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
                     transition={{ duration: 0.2 }}
-                    className={`group mb-6 last:mb-0`}
+                    className={`group max-w-full ${isAI ? '' : 'flex justify-end'}`}
                   >
-                    <div className="flex items-start gap-3">
+                    <div className={`flex items-start gap-3 ${isAI ? 'max-w-[85%]' : 'max-w-[75%] flex-row-reverse'}`}>
                       {isAI && <EarthIcon />}
-                      <div className={`flex-1 ${isAI ? 'message-bubble-ai' : 'message-bubble-user'} p-4 rounded-xl`}>
-                        <div className="prose prose-blue w-fit ">
-                          {msg.text}
+                      <div className={`flex-1 ${isAI ? 'message-bubble-ai' : 'message-bubble-user'} p-4 rounded-xl overflow-hidden`}>
+                        <div className="prose prose-blue w-full max-w-none prose-pre:bg-gray-800 prose-pre:text-white prose-pre:p-4 prose-pre:rounded-lg prose-code:text-blue-600 prose-code:bg-blue-50 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:before:content-[''] prose-code:after:content-[''] prose-headings:mb-3 prose-p:mb-2 prose-ul:mb-2 prose-li:mb-1 prose-pre:overflow-x-auto">
+                          {isAI ? (
+                            <div className="break-words">
+                              <ReactMarkdown 
+                                remarkPlugins={[remarkGfm]}
+                                rehypePlugins={[rehypeRaw]}
+                                components={{
+                                  pre: ({ children, ...props }) => (
+                                    <pre className="overflow-auto" {...props}>
+                                      {children}
+                                    </pre>
+                                  ),
+                                  code: ({ children, inline, ...props }) => {
+                                    if (inline) {
+                                      return <code {...props}>{children}</code>;
+                                    }
+                                    return (
+                                      <code className="block" {...props}>
+                                        {children}
+                                      </code>
+                                    );
+                                  }
+                                }}
+                              >
+                                {msg.text || ''}
+                              </ReactMarkdown>
+                            </div>
+                          ) : (
+                            <p>{msg.text}</p>
+                          )}
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 mt-1 px-11 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className={`flex items-center gap-2 mt-1 ${isAI ? 'px-11' : 'justify-end'} opacity-0 group-hover:opacity-100 transition-opacity`}>
                       <button className="text-xs text-blue-600/60 hover:text-blue-600">Copy</button>
                       {isAI && (
                         <>
@@ -390,14 +425,15 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="border-t border-blue-100 bg-white/80 backdrop-blur-sm">
-          <form onSubmit={sendMessage} className="max-w-3xl mx-auto p-4">
+        {/* Input Area */}
+        <div className="border-t border-blue-100 bg-white/80 backdrop-blur-sm sticky bottom-0 z-40">
+          <form onSubmit={sendMessage} className="max-w-4xl mx-auto p-4">
             <div className="relative">
               <textarea
                 ref={textareaRef}
                 className="w-full px-4 py-3 pr-24 rounded-xl border border-blue-100 bg-white/80 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] text-sm resize-none"
                 rows="1"
-                placeholder="about weather, earth science, or geomatics..."
+                placeholder="Ask about weather, earth science, or geomatics..."
                 value={input}
                 onChange={e => {
                   setInput(e.target.value);
